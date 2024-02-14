@@ -19,13 +19,13 @@ local GRAVITY: number = 9.81
 local WAVE_AMPLITUDE = 0.0004
 
 --// The size of the furier, must be a pow2 number. It is a sort of resolution of the Ocean
-local FURIER_SIZE: number = 32
+local FURIER_SIZE: number = 64
 
 --// The ocean mesh length size
-local MESH_LENGTH: number = 32
+local MESH_LENGTH: number = 64
 
 --// The Speed of the Wind in the relevant axis
-local WIND_SPEED: Vector2 = Vector2.new(32, 32)
+local WIND_SPEED: Vector2 = Vector2.new(32, 24)
 
 --// Normalized vector of WIND_SPEED
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
@@ -42,8 +42,8 @@ local OCEAN_MESH: EditableMesh
 
 --// Spectrums that will be transformed
 --// into wave height/slopes
-local Spectrum: {[number]: Vector2} = table.create(FURIER_SIZE*(FURIER_SIZE+1)-1)
-local SpectrumConj: {[number]: Vector2} = table.create(FURIER_SIZE*(FURIER_SIZE+1)-1)
+local Spectrum: {[number]: Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
+local SpectrumConj: {[number]: Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Used for FFT
 local DisplacementBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
@@ -51,7 +51,7 @@ local HeightBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
 local NormalBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Holds data so the spectrum can be precomputed
-local Dispersions: {[number]: number} = table.create(FURIER_SIZE*(FURIER_SIZE+1)-1)
+local Dispersions: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Modules
 local LuaFFT = require(script.LuaFFT)
@@ -92,7 +92,9 @@ local function PhillipsSpectrum(X: number, Y: number): number
 	) / MESH_LENGTH
 
 	local KLength = K.Magnitude
-	if KLength < 0.000001 then return 0 end
+	if KLength < 0.000001 then
+		return 0 
+	end
 
 	local KLength2: number = KLength * KLength
 	local KLength4: number = KLength2 * KLength2
@@ -132,7 +134,7 @@ end
 
 --// Inits the spectrum for time period t
 local function InitSpectrum(t: number, X: number, Y: number): Vector2
-	local Index: number = Y * (FURIER_SIZE+1) + X + 1
+	local Index: number = Y * FURIER_SIZE + X + 1
 
 	local OmegaT: number = Dispersions[Index] * t
 
@@ -153,12 +155,10 @@ end
 local function Init()
 	for Y = 0, FURIER_SIZE-1 do
 		for X = 0, FURIER_SIZE-1 do
-			local Index: number = Y * (FURIER_SIZE+1) + X + 1
+			table.insert(Dispersions, Dispersion(X, Y))
 
-			Dispersions[Index] = Dispersion(X, Y)
-
-			Spectrum[Index] = GetSpectrum(X, Y)
-			SpectrumConj[Index] = GetSpectrum(-X, -Y) * Vector2.new(1, -1)
+			table.insert(Spectrum, GetSpectrum(X, Y))
+			table.insert(SpectrumConj, GetSpectrum(-X, -Y) * Vector2.new(1, -1))
 		end
 	end
 end
@@ -177,7 +177,7 @@ local function UpdateOcean(t: number)
 			kx = math.pi * (2 * X - FURIER_SIZE) / MESH_LENGTH
 			len = math.sqrt(kx * kx + kz * kz)
 
-			local Index: number = (Y * FURIER_SIZE + X) + 1
+			local Index: number = Y * FURIER_SIZE + X + 1
 
 			local c: Vector2 = InitSpectrum(t, X, Y)
 
@@ -208,15 +208,16 @@ local function UpdateOcean(t: number)
 	--// Transform the Vertices
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FURIER_SIZE
-		
+		local Y: number = Index % FURIER_SIZE
+
 		-- Fixes Imag numbers being flipped
 		local Sign: number = 1 - 2 * ((X + Index) % 2)
 
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
-			Index // FURIER_SIZE + Displacement[1] * lambda * Sign,
+			X + Displacement[1] * lambda * Sign,
 			HeightFFT[Index][1] * Sign,
-			Index % FURIER_SIZE + Displacement[2] * lambda * Sign
+			Y + Displacement[2] * lambda * Sign
 			)
 		)
 
