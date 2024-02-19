@@ -1,5 +1,5 @@
---!native
 --!strict
+--!native
 --!optimize 2
 
 -- @IcyMonstrosity, 2023
@@ -42,25 +42,24 @@ local OCEAN_MESH: EditableMesh
 
 --// Spectrums that will be transformed
 --// into wave height/slopes
-local Spectrum: {[number]: Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
-local SpectrumConj: {[number]: Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
+local Spectrum: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
+local SpectrumConj: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Used for FFT
-local DisplacementBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
-local HeightBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
-local NormalBuffer: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
+local DisplacementBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
+local HeightBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
+local NormalBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Holds data so the spectrum can be precomputed
-local Dispersions: {[number]: number} = table.create(FURIER_SIZE*FURIER_SIZE)
+local Dispersions: {number} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Modules
 local LuaFFT = require(script.LuaFFT)
-local Complex = require(script.Complex)
 
 --// Services
 local RunService: RunService = game:GetService("RunService")
 
---// Used for Cross Client syncing
+--// For Cross Client syncing
 local ServerRandom: Random = Random.new(
 	math.round((workspace:GetServerTimeNow()-workspace.DistributedGameTime))
 )
@@ -80,6 +79,7 @@ local function GaussianRandomVariable(): Vector2
 	until w < 1
 
 	w = math.sqrt((-2 * math.log(w)) / w)
+
 	return Vector2.new(x1 * w, x2 * w)
 end
 
@@ -181,27 +181,27 @@ local function UpdateOcean(t: number)
 
 			local c: Vector2 = InitSpectrum(t, X, Y)
 
-			HeightBuffer[Index] = Complex.new(c.Y, c.X)
-			NormalBuffer[Index] = Complex.new(-c.Y*kx, c.X*kx, -c.Y*kz, c.X*kz)
+			HeightBuffer[Index] = {c.Y, c.X}
+			NormalBuffer[Index] = {-c.Y*kx, c.X*kx, -c.Y*kz, c.X*kz}
 
 			if len < 0.000001 then
-				DisplacementBuffer[Index] = Complex.new(0, 0)
+				DisplacementBuffer[Index] = {0, 0}
 			else
-				DisplacementBuffer[Index] = Complex.new(
+				DisplacementBuffer[Index] = {
 					-c.Y * -(kx/len),
 					c.X * -(kx/len),
 					-c.Y * -(kz/len),
 					c.X * -(kz/len)
-				)
+				}
 			end
 
 		end
 	end
-
+	
 	--// Perform FFT
-	local HeightFFT: {[number]: {number}} = LuaFFT.fft(HeightBuffer)
-	local DisplacementFFT: {[number]: {number}} = LuaFFT.fft(DisplacementBuffer)
-	local NormalFFT: {[number]: {number}} = LuaFFT.fft(NormalBuffer)
+	local HeightFFT: {{number}} = LuaFFT.fft(HeightBuffer)
+	local DisplacementFFT: {{number}} = LuaFFT.fft(DisplacementBuffer)
+	local NormalFFT: {{number}} = LuaFFT.fft(NormalBuffer)
 
 	task.synchronize()
 
@@ -211,7 +211,7 @@ local function UpdateOcean(t: number)
 		local Y: number = Index % FURIER_SIZE
 
 		-- Fixes Imag numbers being flipped
-		local Sign: number = 1 - 2 * ((X + Index) % 2)
+		local Sign: number = 1 - 2 * ((X + Y) % 2)
 
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
