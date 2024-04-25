@@ -19,7 +19,7 @@ local GRAVITY: number = 9.81
 local WAVE_AMPLITUDE = 0.0004
 
 --// The size of the furier, must be a pow2 number. It is a sort of resolution of the Ocean
-local FURIER_SIZE: number = 64
+local FURIER_SIZE: number = 96
 
 --// The ocean mesh length size
 local MESH_LENGTH: number = 64
@@ -46,9 +46,9 @@ local Spectrum: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
 local SpectrumConj: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
 
 --// Used for FFT
-local DisplacementBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
-local HeightBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
-local NormalBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE)
+local DisplacementBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(4))
+local HeightBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(2))
+local NormalBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(4))
 
 --// Holds data so the spectrum can be precomputed
 local Dispersions: {number} = table.create(FURIER_SIZE*FURIER_SIZE)
@@ -61,7 +61,7 @@ local RunService: RunService = game:GetService("RunService")
 
 --// For Cross Client syncing
 local ServerRandom: Random = Random.new(
-	math.round((workspace:GetServerTimeNow()-workspace.DistributedGameTime))
+	math.floor((workspace:GetServerTimeNow()-workspace.DistributedGameTime))
 )
 
 ---------------VARIABLES--------------
@@ -86,9 +86,9 @@ end
 
 --// Gets the spectrum value for the grid position
 local function PhillipsSpectrum(X: number, Y: number): number
-	local K: Vector2 = Vector2.new(
-		math.pi * (2*X - FURIER_SIZE),
-		math.pi * (2*Y - FURIER_SIZE)
+	local K: Vector2 = math.pi * Vector2.new(
+		(2*X - FURIER_SIZE),
+		(2*Y - FURIER_SIZE)
 	) / MESH_LENGTH
 
 	local KLength = K.Magnitude
@@ -121,10 +121,11 @@ local function GetSpectrum(X: number, Y: number): Vector2
 	return GaussianRandomVariable() * math.sqrt(PhillipsSpectrum(X, Y) / 2)
 end
 
---// Returns a dispersion number for X,Y
-local function Dispersion(X: number, Y: number): number
-	local w_0: number = 0.031415926535897934 -- math.pi / 100
 
+--// Returns a dispersion number for X,Y
+local w_0: number = 0.031415926535897934 -- math.pi / 100
+
+local function Dispersion(X: number, Y: number): number
 	local kx: number = math.pi * (2 * X - FURIER_SIZE) / MESH_LENGTH
 	local kz: number = math.pi * (2 * Y - FURIER_SIZE) / MESH_LENGTH
 
@@ -133,9 +134,7 @@ end
 
 
 --// Inits the spectrum for time period t
-local function InitSpectrum(t: number, X: number, Y: number): Vector2
-	local Index: number = Y * FURIER_SIZE + X + 1
-
+local function InitSpectrum(t: number, X: number, Y: number, Index): Vector2
 	local OmegaT: number = Dispersions[Index] * t
 
 	local cos: number = math.cos(OmegaT)
@@ -144,7 +143,7 @@ local function InitSpectrum(t: number, X: number, Y: number): Vector2
 	local c0a: number = Spectrum[Index].X*cos - Spectrum[Index].Y*sin
 	local c0b: number = Spectrum[Index].X*sin + Spectrum[Index].Y*cos
 
-	local c1a: number = SpectrumConj[Index].X*cos - SpectrumConj[Index].Y*-sin
+	local c1a: number = SpectrumConj[Index].X*cos + SpectrumConj[Index].Y*sin
 	local c1b: number = SpectrumConj[Index].X*-sin + SpectrumConj[Index].Y*cos
 
 	return Vector2.new(c0a+c1a, c0b+c1b)
@@ -179,7 +178,7 @@ local function UpdateOcean(t: number)
 
 			local Index: number = Y * FURIER_SIZE + X + 1
 
-			local c: Vector2 = InitSpectrum(t, X, Y)
+			local c: Vector2 = InitSpectrum(t, X, Y, Index)
 
 			HeightBuffer[Index] = {c.Y, c.X}
 			NormalBuffer[Index] = {-c.Y*kx, c.X*kx, -c.Y*kz, c.X*kz}
@@ -199,9 +198,9 @@ local function UpdateOcean(t: number)
 	end
 	
 	--// Perform FFT
-	local HeightFFT: {{number}} = LuaFFT.fft(HeightBuffer)
-	local DisplacementFFT: {{number}} = LuaFFT.fft(DisplacementBuffer)
-	local NormalFFT: {{number}} = LuaFFT.fft(NormalBuffer)
+	local HeightFFT: {{number}} = LuaFFT.iFFT(HeightBuffer)
+	local DisplacementFFT: {{number}} = LuaFFT.iFFT(DisplacementBuffer)
+	local NormalFFT: {{number}} = LuaFFT.iFFT(NormalBuffer)
 
 	task.synchronize()
 
@@ -224,7 +223,7 @@ local function UpdateOcean(t: number)
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		OCEAN_MESH:SetVertexNormal(Index, Vector3.new(
 			-NormalFFT[Index][1] * Sign,
-			1,
+			1.5,
 			-NormalFFT[Index][2] * Sign
 			).Unit
 		)
