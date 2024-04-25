@@ -134,7 +134,7 @@ end
 
 
 --// Inits the spectrum for time period t
-local function InitSpectrum(t: number, X: number, Y: number, Index): Vector2
+local function InitSpectrum(t: number, Index): Vector2
 	local OmegaT: number = Dispersions[Index] * t
 
 	local cos: number = math.cos(OmegaT)
@@ -178,7 +178,7 @@ local function UpdateOcean(t: number)
 
 			local Index: number = Y * FURIER_SIZE + X + 1
 
-			local c: Vector2 = InitSpectrum(t, X, Y, Index)
+			local c: Vector2 = InitSpectrum(t, Index)
 
 			HeightBuffer[Index] = {c.Y, c.X}
 			NormalBuffer[Index] = {-c.Y*kx, c.X*kx, -c.Y*kz, c.X*kz}
