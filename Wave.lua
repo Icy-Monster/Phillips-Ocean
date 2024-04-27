@@ -25,7 +25,7 @@ local FURIER_SIZE: number = 96
 local MESH_LENGTH: number = 64
 
 --// The Speed of the Wind in the relevant axis
-local WIND_SPEED: Vector2 = Vector2.new(32, 24)
+local WIND_SPEED: Vector2 = Vector2.new(32, 24) 
 
 --// Normalized vector of WIND_SPEED
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
@@ -152,8 +152,8 @@ end
 
 --// Fills up all the required tables
 local function Init()
-	for Y = 0, FURIER_SIZE-1 do
-		for X = 0, FURIER_SIZE-1 do
+	for X = 0, FURIER_SIZE-1 do
+		for Y = 0, FURIER_SIZE-1 do
 			table.insert(Dispersions, Dispersion(X, Y))
 
 			table.insert(Spectrum, GetSpectrum(X, Y))
