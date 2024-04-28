@@ -22,7 +22,7 @@ local WAVE_AMPLITUDE = 0.0004
 local FURIER_SIZE: number = 64
 
 --// The ocean mesh length size
-local MESH_LENGTH: number = 32
+local MESH_LENGTH: number = 16
 
 --// The Speed of the Wind in the relevant axis
 local WIND_SPEED: Vector2 = Vector2.new(32, 25)
@@ -37,16 +37,16 @@ local OCEAN: MeshPart = workspace:WaitForChild("Ocean")
 local OCEAN_MESH: EditableMesh
 
 
---//// Coustics
+--//// Caustics
 
 
---// The coustics mesh part
-local COUSTICS: MeshPart = workspace:WaitForChild("Coustics")
+--// The caustics mesh part
+local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
 
---// For coustics
-local COUSTICS_TEXTURE: EditableImage
+--// For caustics
+local CAUSTICS_TEXTURE: EditableImage
 
---// Resolution of the coustics
+--// Resolution of the caustics
 local TEXTURE_SIZE: Vector2 = Vector2.new(FURIER_SIZE, FURIER_SIZE)
 
 ---------------CONSTANTS---------------
@@ -251,18 +251,18 @@ local function UpdateOcean(t: number)
 		table.insert(Pixels, 1)
 	end
 	
-	COUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
+	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Furier Size
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
-	COUSTICS_TEXTURE = Instance.new("EditableImage")
+	CAUSTICS_TEXTURE = Instance.new("EditableImage")
 	
-	COUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
-	COUSTICS.Size = Vector3.new(FURIER_SIZE*OCEAN.Size.X, 32, FURIER_SIZE*OCEAN.Size.Z)
-	COUSTICS.Position  = Vector3.new(FURIER_SIZE, -15, FURIER_SIZE)
+	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
+	CAUSTICS.Size = Vector3.new(FURIER_SIZE*OCEAN.Size.X, 32, FURIER_SIZE*OCEAN.Size.Z)
+	CAUSTICS.Position  = Vector3.new(FURIER_SIZE, -15, FURIER_SIZE)
 
 	--// Creates the Vertices, UV
 	for _ = 1, FURIER_SIZE*FURIER_SIZE do
@@ -283,7 +283,7 @@ local function MakeMesh()
 	end
 
 	OCEAN_MESH.Parent = OCEAN
-	COUSTICS_TEXTURE.Parent = COUSTICS
+	CAUSTICS_TEXTURE.Parent = CAUSTICS
 end
 
 ---------------FUNCTIONS---------------
