@@ -25,7 +25,7 @@ local FURIER_SIZE: number = 96
 local MESH_LENGTH: number = 64
 
 --// The Speed of the Wind in the relevant axis
-local WIND_SPEED: Vector2 = Vector2.new(32, 24) 
+local WIND_SPEED: Vector2 = Vector2.new(32, 24)
 
 --// Normalized vector of WIND_SPEED
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
@@ -196,7 +196,7 @@ local function UpdateOcean(t: number)
 
 		end
 	end
-	
+
 	--// Perform FFT
 	local HeightFFT: {{number}} = LuaFFT.iFFT(HeightBuffer)
 	local DisplacementFFT: {{number}} = LuaFFT.iFFT(DisplacementBuffer)
@@ -223,7 +223,7 @@ local function UpdateOcean(t: number)
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		OCEAN_MESH:SetVertexNormal(Index, Vector3.new(
 			-NormalFFT[Index][1] * Sign,
-			1.5,
+			1,
 			-NormalFFT[Index][2] * Sign
 			).Unit
 		)
@@ -236,10 +236,8 @@ local function MakeMesh()
 	OCEAN_MESH = Instance.new("EditableMesh")
 
 	--// Creates the Vertices, UV
-	for X = 1, FURIER_SIZE do
-		for Y = 1, FURIER_SIZE do
-			OCEAN_MESH:AddVertex(Vector3.new(X, 0, Y))
-		end
+	for _ = 1, FURIER_SIZE*FURIER_SIZE do
+		local Vertex = OCEAN_MESH:AddVertex(Vector3.zero) -- position gets set elsewhere (216)
 	end
 
 	--// Connects the Vertices into Triangles
