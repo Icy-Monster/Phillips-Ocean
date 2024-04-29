@@ -25,7 +25,7 @@ local FURIER_SIZE: number = 96
 local MESH_LENGTH: number = 64
 
 --// The Speed of the Wind in the relevant axis
-local WIND_SPEED: Vector2 = Vector2.new(32, 24)
+local WIND_SPEED: Vector2 = Vector2.new(32, 25)
 
 --// Normalized vector of WIND_SPEED
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
@@ -35,6 +35,19 @@ local OCEAN: MeshPart = workspace:WaitForChild("Ocean")
 
 --// The editable mesh, used to creates waves, and to hold the foam
 local OCEAN_MESH: EditableMesh
+
+
+--//// Caustics
+
+
+--// The caustics mesh part
+local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
+
+--// For caustics
+local CAUSTICS_TEXTURE: EditableImage
+
+--// Resolution of the caustics
+local TEXTURE_SIZE: Vector2 = Vector2.new(FURIER_SIZE, FURIER_SIZE)
 
 ---------------CONSTANTS---------------
 ---------------------------------------
@@ -166,6 +179,8 @@ end
 --// Calculates the FFT and moves the vertices accordingly
 local function UpdateOcean(t: number)
 	task.desynchronize()
+	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
+	
 	local kx, kz, len, lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
@@ -205,6 +220,7 @@ local function UpdateOcean(t: number)
 	task.synchronize()
 
 	--// Transform the Vertices
+	local SunDirection: Vector3 = game.Lighting:GetSunDirection()
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FURIER_SIZE
 		local Y: number = Index % FURIER_SIZE
@@ -221,19 +237,34 @@ local function UpdateOcean(t: number)
 		)
 
 		--// Change the Normal, you can change the Y value to increase/decrease strength
-		OCEAN_MESH:SetVertexNormal(Index, Vector3.new(
+		local Normal = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
 			1,
 			-NormalFFT[Index][2] * Sign
-			).Unit
-		)
+		).Unit
+		
+		OCEAN_MESH:SetVertexNormal(Index, Normal)
+		
+		local SunDot = Normal:Dot(SunDirection) / 2
+		table.insert(Pixels, 0.4 + SunDot)
+		table.insert(Pixels, 0.3 + SunDot)
+		table.insert(Pixels, 0.15 + SunDot)
+		table.insert(Pixels, 1)
 	end
+	
+	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Furier Size
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
+	CAUSTICS_TEXTURE = Instance.new("EditableImage")
+	
+	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
+	
+	CAUSTICS.Size = Vector3.new(FURIER_SIZE*OCEAN.Size.X, 32, FURIER_SIZE*OCEAN.Size.Z)
+	CAUSTICS.Position  = Vector3.new(FURIER_SIZE/2 * OCEAN.Size.X, -15, FURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices, UV
 	for _ = 1, FURIER_SIZE*FURIER_SIZE do
@@ -254,6 +285,7 @@ local function MakeMesh()
 	end
 
 	OCEAN_MESH.Parent = OCEAN
+	CAUSTICS_TEXTURE.Parent = CAUSTICS
 end
 
 ---------------FUNCTIONS---------------
