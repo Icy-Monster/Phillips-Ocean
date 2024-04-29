@@ -18,8 +18,8 @@ local GRAVITY: number = 9.81
 --// on themselves.
 local WAVE_AMPLITUDE = 0.0004
 
---// The size of the furier, must be a pow2 number. It is a sort of resolution of the Ocean
-local FURIER_SIZE: number = 96
+--// The size of the fourier, must be a pow2 number. It is a sort of resolution of the Ocean
+local FOURIER_SIZE: number = 96
 
 --// The ocean mesh length size
 local MESH_LENGTH: number = 64
@@ -38,7 +38,7 @@ local OCEAN_MESH: EditableMesh
 
 
 --//// Caustics
-
+ 
 
 --// The caustics mesh part
 local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
@@ -47,7 +47,7 @@ local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
 local CAUSTICS_TEXTURE: EditableImage
 
 --// Resolution of the caustics
-local TEXTURE_SIZE: Vector2 = Vector2.new(FURIER_SIZE, FURIER_SIZE)
+local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 ---------------CONSTANTS---------------
 ---------------------------------------
@@ -55,16 +55,16 @@ local TEXTURE_SIZE: Vector2 = Vector2.new(FURIER_SIZE, FURIER_SIZE)
 
 --// Spectrums that will be transformed
 --// into wave height/slopes
-local Spectrum: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
-local SpectrumConj: {Vector2} = table.create(FURIER_SIZE*FURIER_SIZE)
+local Spectrum: {Vector2} = table.create(FOURIER_SIZE*FOURIER_SIZE)
+local SpectrumConj: {Vector2} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 
 --// Used for FFT
-local DisplacementBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(4))
-local HeightBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(2))
-local NormalBuffer: {{number}} = table.create(FURIER_SIZE*FURIER_SIZE, table.create(4))
+local DisplacementBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
+local HeightBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(2))
+local NormalBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
 
 --// Holds data so the spectrum can be precomputed
-local Dispersions: {number} = table.create(FURIER_SIZE*FURIER_SIZE)
+local Dispersions: {number} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 
 --// Modules
 local LuaFFT = require(script.LuaFFT)
@@ -100,8 +100,8 @@ end
 --// Gets the spectrum value for the grid position
 local function PhillipsSpectrum(X: number, Y: number): number
 	local K: Vector2 = math.pi * Vector2.new(
-		(2*X - FURIER_SIZE),
-		(2*Y - FURIER_SIZE)
+		(2*X - FOURIER_SIZE),
+		(2*Y - FOURIER_SIZE)
 	) / MESH_LENGTH
 
 	local KLength = K.Magnitude
@@ -139,8 +139,8 @@ end
 local w_0: number = 0.031415926535897934 -- math.pi / 100
 
 local function Dispersion(X: number, Y: number): number
-	local kx: number = math.pi * (2 * X - FURIER_SIZE) / MESH_LENGTH
-	local kz: number = math.pi * (2 * Y - FURIER_SIZE) / MESH_LENGTH
+	local kx: number = math.pi * (2 * X - FOURIER_SIZE) / MESH_LENGTH
+	local kz: number = math.pi * (2 * Y - FOURIER_SIZE) / MESH_LENGTH
 
 	return math.floor(math.sqrt(GRAVITY * math.sqrt(kx * kx + kz * kz)) / w_0) * w_0
 end
@@ -165,8 +165,8 @@ end
 
 --// Fills up all the required tables
 local function Init()
-	for X = 0, FURIER_SIZE-1 do
-		for Y = 0, FURIER_SIZE-1 do
+	for X = 0, FOURIER_SIZE-1 do
+		for Y = 0, FOURIER_SIZE-1 do
 			table.insert(Dispersions, Dispersion(X, Y))
 
 			table.insert(Spectrum, GetSpectrum(X, Y))
@@ -184,14 +184,14 @@ local function UpdateOcean(t: number)
 	local kx, kz, len, lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
-	for Y = 0, FURIER_SIZE-1 do
-		kz = math.pi * (2 * Y - FURIER_SIZE) / MESH_LENGTH
+	for Y = 0, FOURIER_SIZE-1 do
+		kz = math.pi * (2 * Y - FOURIER_SIZE) / MESH_LENGTH
 
-		for X = 0, FURIER_SIZE-1 do
-			kx = math.pi * (2 * X - FURIER_SIZE) / MESH_LENGTH
+		for X = 0, FOURIER_SIZE-1 do
+			kx = math.pi * (2 * X - FOURIER_SIZE) / MESH_LENGTH
 			len = math.sqrt(kx * kx + kz * kz)
 
-			local Index: number = Y * FURIER_SIZE + X + 1
+			local Index: number = Y * FOURIER_SIZE + X + 1
 
 			local c: Vector2 = InitSpectrum(t, Index)
 
@@ -222,8 +222,8 @@ local function UpdateOcean(t: number)
 	--// Transform the Vertices
 	local SunDirection: Vector3 = game.Lighting:GetSunDirection()
 	for Index, Displacement: {number} in DisplacementFFT do
-		local X: number = Index // FURIER_SIZE
-		local Y: number = Index % FURIER_SIZE
+		local X: number = Index // FOURIER_SIZE
+		local Y: number = Index % FOURIER_SIZE
 
 		-- Fixes Imag numbers being flipped
 		local Sign: number = 1 - 2 * ((X + Y) % 2)
@@ -256,27 +256,27 @@ local function UpdateOcean(t: number)
 end
 
 
---//Creates a Mesh with a X,Y resolution of Furier Size
+--//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
 	CAUSTICS_TEXTURE = Instance.new("EditableImage")
 	
 	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
 	
-	CAUSTICS.Size = Vector3.new(FURIER_SIZE*OCEAN.Size.X, 32, FURIER_SIZE*OCEAN.Size.Z)
-	CAUSTICS.Position  = Vector3.new(FURIER_SIZE/2 * OCEAN.Size.X, -15, FURIER_SIZE/2 * OCEAN.Size.Z)
+	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, 32, FOURIER_SIZE*OCEAN.Size.Z)
+	CAUSTICS.Position  = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices, UV
-	for _ = 1, FURIER_SIZE*FURIER_SIZE do
+	for _ = 1, FOURIER_SIZE*FOURIER_SIZE do
 		local Vertex = OCEAN_MESH:AddVertex(Vector3.zero) -- position gets set elsewhere (216)
 	end
 
 	--// Connects the Vertices into Triangles
-	for X = 1, FURIER_SIZE-2 do
-		for Y = 1, FURIER_SIZE-2 do
-			local Vertex1 = X * FURIER_SIZE + Y
+	for X = 1, FOURIER_SIZE-2 do
+		for Y = 1, FOURIER_SIZE-2 do
+			local Vertex1 = X * FOURIER_SIZE + Y
 			local Vertex2 = Vertex1 + 1
-			local Vertex3 = (X + 1) * FURIER_SIZE + Y
+			local Vertex3 = (X + 1) * FOURIER_SIZE + Y
 			local Vertex4 = Vertex3 + 1
 
 			OCEAN_MESH:AddTriangle(Vertex1, Vertex2, Vertex3)
