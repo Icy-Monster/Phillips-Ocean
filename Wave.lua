@@ -1,9 +1,9 @@
---!strict
 --!native
 --!optimize 2
+--!strict
 
 -- @IcyMonstrosity, 2023
--- Original C++ implementation: https://github.com/Scrawk/Phillips-Ocean
+-- https://devforum.roblox.com/t/fft-phillips-ocean/2950964
 
 
 
@@ -38,7 +38,7 @@ local OCEAN_MESH: EditableMesh
 
 
 --//// Caustics
- 
+
 
 --// The caustics mesh part
 local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
@@ -58,13 +58,13 @@ local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 local Spectrum: {Vector2} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 local SpectrumConj: {Vector2} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 
+--// Holds data so the spectrum can be precomputed
+local Dispersions: {number} = table.create(FOURIER_SIZE*FOURIER_SIZE)
+
 --// Used for FFT
 local DisplacementBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
 local HeightBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(2))
 local NormalBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
-
---// Holds data so the spectrum can be precomputed
-local Dispersions: {number} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 
 --// Modules
 local LuaFFT = require(script.LuaFFT)
@@ -147,7 +147,7 @@ end
 
 
 --// Inits the spectrum for time period t
-local function InitSpectrum(t: number, Index): Vector2
+local function InitSpectrum(t: number, Index: number): Vector2
 	local OmegaT: number = Dispersions[Index] * t
 
 	local cos: number = math.cos(OmegaT)
@@ -180,7 +180,7 @@ end
 local function UpdateOcean(t: number)
 	task.desynchronize()
 	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
-	
+
 	local kx, kz, len, lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
@@ -236,22 +236,30 @@ local function UpdateOcean(t: number)
 			)
 		)
 
+		--// Sea foam
+		OCEAN_MESH:SetVertexColor(Index, Color3.fromHSV(
+			0.55,
+			math.min(-HeightFFT[Index][1] * Sign / 3 + 0.25, 1),
+			0.7
+			)
+		)
+
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		local Normal = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
 			1,
 			-NormalFFT[Index][2] * Sign
 		).Unit
-		
+
 		OCEAN_MESH:SetVertexNormal(Index, Normal)
-		
+
 		local SunDot = Normal:Dot(SunDirection) / 2
 		table.insert(Pixels, 0.4 + SunDot)
 		table.insert(Pixels, 0.3 + SunDot)
 		table.insert(Pixels, 0.15 + SunDot)
 		table.insert(Pixels, 1)
 	end
-	
+
 	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
 end
 
@@ -260,15 +268,15 @@ end
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
 	CAUSTICS_TEXTURE = Instance.new("EditableImage")
-	
+
 	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
-	
+
 	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, 32, FOURIER_SIZE*OCEAN.Size.Z)
 	CAUSTICS.Position  = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
-	--// Creates the Vertices, UV
+	--// Creates the Vertices
 	for _ = 1, FOURIER_SIZE*FOURIER_SIZE do
-		local Vertex = OCEAN_MESH:AddVertex(Vector3.zero) -- position gets set elsewhere (216)
+		OCEAN_MESH:AddVertex(Vector3.zero) -- position gets set elsewhere (231)
 	end
 
 	--// Connects the Vertices into Triangles
