@@ -16,7 +16,7 @@ local GRAVITY: number = 9.81
 --// The Philips Spectrum parameter. Affects water height.
 --// Setting this too high can cause the waves to curl back
 --// on themselves.
-local WAVE_AMPLITUDE = 0.0004
+local WAVE_AMPLITUDE: number = 0.0004
 
 --// The size of the fourier, must be a pow2 number. It is a sort of resolution of the Ocean
 local FOURIER_SIZE: number = 96
@@ -63,8 +63,8 @@ local Dispersions: {number} = table.create(FOURIER_SIZE*FOURIER_SIZE)
 
 --// Used for FFT
 local DisplacementBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
-local HeightBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(2))
 local NormalBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(4))
+local HeightBuffer: {{number}} = table.create(FOURIER_SIZE*FOURIER_SIZE, table.create(2))
 
 --// Modules
 local LuaFFT = require(script.LuaFFT)
@@ -76,6 +76,9 @@ local RunService: RunService = game:GetService("RunService")
 local ServerRandom: Random = Random.new(
 	math.floor((workspace:GetServerTimeNow()-workspace.DistributedGameTime))
 )
+
+--// Precomputed since it's used many times
+local k = math.pi / MESH_LENGTH
 
 ---------------VARIABLES--------------
 --------------------------------------
@@ -99,10 +102,10 @@ end
 
 --// Gets the spectrum value for the grid position
 local function PhillipsSpectrum(X: number, Y: number): number
-	local K: Vector2 = math.pi * Vector2.new(
+	local K: Vector2 = Vector2.new(
 		(2*X - FOURIER_SIZE),
 		(2*Y - FOURIER_SIZE)
-	) / MESH_LENGTH
+	) * k
 
 	local KLength = K.Magnitude
 	if KLength < 0.000001 then
@@ -139,9 +142,9 @@ end
 local w_0: number = 0.031415926535897934 -- math.pi / 100
 
 local function Dispersion(X: number, Y: number): number
-	local kx: number = math.pi * (2 * X - FOURIER_SIZE) / MESH_LENGTH
-	local kz: number = math.pi * (2 * Y - FOURIER_SIZE) / MESH_LENGTH
-
+	local kx: number = (2 * X - FOURIER_SIZE) * k
+	local kz: number = (2 * Y - FOURIER_SIZE) * k
+	
 	return math.floor(math.sqrt(GRAVITY * math.sqrt(kx * kx + kz * kz)) / w_0) * w_0
 end
 
@@ -185,10 +188,10 @@ local function UpdateOcean(t: number)
 
 	--// Calculate Displacement/Height
 	for Y = 0, FOURIER_SIZE-1 do
-		kz = math.pi * (2 * Y - FOURIER_SIZE) / MESH_LENGTH
+		kz = (2 * Y - FOURIER_SIZE) * k
 
 		for X = 0, FOURIER_SIZE-1 do
-			kx = math.pi * (2 * X - FOURIER_SIZE) / MESH_LENGTH
+			kx = (2 * X - FOURIER_SIZE) * k
 			len = math.sqrt(kx * kx + kz * kz)
 
 			local Index: number = Y * FOURIER_SIZE + X + 1
@@ -253,7 +256,7 @@ local function UpdateOcean(t: number)
 
 		OCEAN_MESH:SetVertexNormal(Index, Normal)
 
-		local SunDot = Normal:Dot(SunDirection) / 2
+		local SunDot: number = Normal:Dot(SunDirection) / 2
 		table.insert(Pixels, 0.4 + SunDot)
 		table.insert(Pixels, 0.3 + SunDot)
 		table.insert(Pixels, 0.15 + SunDot)
@@ -272,7 +275,7 @@ local function MakeMesh()
 	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
 
 	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, 32, FOURIER_SIZE*OCEAN.Size.Z)
-	CAUSTICS.Position  = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
+	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
 	for _ = 1, FOURIER_SIZE*FOURIER_SIZE do
@@ -281,7 +284,7 @@ local function MakeMesh()
 
 	--// Connects the Vertices into Triangles
 	for X = 1, FOURIER_SIZE-2 do
-		for Y = 1, FOURIER_SIZE-2 do
+		for Y = 0, FOURIER_SIZE-2 do
 			local Vertex1 = X * FOURIER_SIZE + Y
 			local Vertex2 = Vertex1 + 1
 			local Vertex3 = (X + 1) * FOURIER_SIZE + Y
