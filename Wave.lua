@@ -78,7 +78,7 @@ local ServerRandom: Random = Random.new(
 )
 
 --// Precomputed since it's used many times
-local k = math.pi / MESH_LENGTH
+local k: number = math.pi / MESH_LENGTH
 
 ---------------VARIABLES--------------
 --------------------------------------
@@ -229,8 +229,8 @@ local function UpdateOcean(t: number)
 		local Y: number = Index % FOURIER_SIZE
 
 		-- Fixes Imag numbers being flipped
-		local Sign: number = 1 - 2 * ((X + Y) % 2)
-
+		local Sign: number = (X + Y) % 2 * 2 - 1
+		
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
 			X + Displacement[1] * lambda * Sign,
@@ -248,7 +248,7 @@ local function UpdateOcean(t: number)
 		)
 
 		--// Change the Normal, you can change the Y value to increase/decrease strength
-		local Normal = Vector3.new(
+		local Normal: Vector3 = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
 			1,
 			-NormalFFT[Index][2] * Sign
