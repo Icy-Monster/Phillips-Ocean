@@ -144,7 +144,7 @@ local w_0: number = 0.031415926535897934 -- math.pi / 100
 local function Dispersion(X: number, Y: number): number
 	local kx: number = (2 * X - FOURIER_SIZE) * k
 	local kz: number = (2 * Y - FOURIER_SIZE) * k
-	
+
 	return math.floor(math.sqrt(GRAVITY * math.sqrt(kx * kx + kz * kz)) / w_0) * w_0
 end
 
@@ -224,13 +224,15 @@ local function UpdateOcean(t: number)
 
 	--// Transform the Vertices
 	local SunDirection: Vector3 = game.Lighting:GetSunDirection()
+	local CausticBrightness: number = 1 + CAUSTICS.Position.Y / OCEAN.Position.Y / 5 -- Less light in deeper water
+	
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FOURIER_SIZE
 		local Y: number = Index % FOURIER_SIZE
 
 		-- Fixes Imag numbers being flipped
 		local Sign: number = (X + Y) % 2 * 2 - 1
-		
+
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
 			X + Displacement[1] * lambda * Sign,
@@ -255,8 +257,10 @@ local function UpdateOcean(t: number)
 		).Unit
 
 		OCEAN_MESH:SetVertexNormal(Index, Normal)
-
-		local SunDot: number = Normal:Dot(SunDirection) / 2
+		
+		--// Caustics
+		local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness
+		
 		table.insert(Pixels, 0.4 + SunDot)
 		table.insert(Pixels, 0.3 + SunDot)
 		table.insert(Pixels, 0.15 + SunDot)
