@@ -156,13 +156,10 @@ local function InitSpectrum(t: number, Index: number): Vector2
 	local cos: number = math.cos(OmegaT)
 	local sin: number = math.sin(OmegaT)
 
-	local c0a: number = Spectrum[Index].X*cos - Spectrum[Index].Y*sin
-	local c0b: number = Spectrum[Index].X*sin + Spectrum[Index].Y*cos
+	local ca = cos*(Spectrum[Index].X + SpectrumConj[Index].X) - sin*(Spectrum[Index].Y - SpectrumConj[Index].Y)
+	local cb = cos*(Spectrum[Index].Y - SpectrumConj[Index].Y) + sin*(Spectrum[Index].X + SpectrumConj[Index].X)
 
-	local c1a: number = SpectrumConj[Index].X*cos + SpectrumConj[Index].Y*sin
-	local c1b: number = SpectrumConj[Index].X*-sin + SpectrumConj[Index].Y*cos
-
-	return Vector2.new(c0a+c1a, c0b+c1b)
+	return Vector2.new(ca, cb)
 end
 
 
@@ -184,7 +181,7 @@ local function UpdateOcean(t: number)
 	task.desynchronize()
 	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 
-	local kx, kz, len, lambda = 0, 0, 0, -1
+	local kx, kz, len, Lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
 	for Y = 0, FOURIER_SIZE-1 do
@@ -225,7 +222,7 @@ local function UpdateOcean(t: number)
 	--// Transform the Vertices
 	local SunDirection: Vector3 = game.Lighting:GetSunDirection()
 	local CausticBrightness: number = 1 + CAUSTICS.Position.Y / OCEAN.Position.Y / 5 -- Less light in deeper water
-	
+
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FOURIER_SIZE
 		local Y: number = Index % FOURIER_SIZE
@@ -235,20 +232,20 @@ local function UpdateOcean(t: number)
 
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
-			X + Displacement[1] * lambda * Sign,
+			X + Displacement[1] * Lambda * Sign,
 			HeightFFT[Index][1] * Sign,
-			Y + Displacement[2] * lambda * Sign
+			Y + Displacement[2] * Lambda * Sign
 			)
 		)
 
 		--// Sea foam
 		OCEAN_MESH:SetVertexColor(Index, Color3.fromHSV(
 			0.55,
-			math.min(-HeightFFT[Index][1] * Sign / 3 + 0.25, 1),
+			math.min(-HeightFFT[Index][1] * Sign / 3 + 0.3, 1),
 			0.7
 			)
 		)
-
+		
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		local Normal: Vector3 = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
@@ -257,10 +254,10 @@ local function UpdateOcean(t: number)
 		).Unit
 
 		OCEAN_MESH:SetVertexNormal(Index, Normal)
-		
+
 		--// Caustics
-		local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness
-		
+		local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness -- at some point this can be replaced with a raycast pointing upwards
+
 		table.insert(Pixels, 0.4 + SunDot)
 		table.insert(Pixels, 0.3 + SunDot)
 		table.insert(Pixels, 0.15 + SunDot)
@@ -282,8 +279,10 @@ local function MakeMesh()
 	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
-	for _ = 1, FOURIER_SIZE*FOURIER_SIZE do
-		OCEAN_MESH:AddVertex(Vector3.zero) -- position gets set elsewhere (231)
+	for X = 0, FOURIER_SIZE do
+		for Y = 0, FOURIER_SIZE do
+			OCEAN_MESH:AddVertex(Vector3.new(X,0,Y))
+		end
 	end
 
 	--// Connects the Vertices into Triangles
