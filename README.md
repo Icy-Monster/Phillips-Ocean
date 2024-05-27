@@ -23,9 +23,9 @@ I went for a sort of stylized effect here by multiplying the normals by 10.
 ![d67f1bbb445e65768422721243607a5420639076](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/ceeb1933-6e0d-42a2-8dd6-4a0cb5806c40)
 ![688d6bd585dd4fba1b25eee1e8e2b7aa532aaf7c](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/770526e8-8dfa-4a3a-a78c-d334332a72ae)
 ****
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/fcda8142-e533-4242-b047-9c7f258a7503
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/3b62b85c-0fcd-4286-94e8-6fce7da61ddc
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/6b293aec-aac3-4d21-bfd9-f548c32bfe56
+![fcda8142-e533-4242-b047-9c7f258a7503](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/fcda8142-e533-4242-b047-9c7f258a7503)
+![3b62b85c-0fcd-4286-94e8-6fce7da61ddc](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/3b62b85c-0fcd-4286-94e8-6fce7da61ddc)
+![6b293aec-aac3-4d21-bfd9-f548c32bfe56](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/6b293aec-aac3-4d21-bfd9-f548c32bfe56)
 
 
 # Want to try it yourself?
