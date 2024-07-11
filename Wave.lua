@@ -5,7 +5,7 @@
 -- @IcyMonstrosity, 2023
 -- https://devforum.roblox.com/t/fft-phillips-ocean/2950964
 
-
+̉
 
 ---------------------------------------
 ---------------CONSTANTS---------------
@@ -49,6 +49,12 @@ local CAUSTICS_TEXTURE: EditableImage
 --// Resolution of the caustics
 local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
+--// Blend the caustics with this texture
+local FLOOR_TEXTURE: SurfaceAppearance = game.workspace.wataw --change this later
+
+--// The Floor Texture's color, used for blending
+local FLOOR_COLOR: {number} = {}
+
 ---------------CONSTANTS---------------
 ---------------------------------------
 ---------------VARIABLES---------------
@@ -71,8 +77,10 @@ local LuaFFT = require(script.LuaFFT)
 
 --// Services
 local RunService: RunService = game:GetService("RunService")
+local LightingService: LightingService = game:GetService("LightingService")
+local AssetService: AssetService = game:GetService("AssetService")
 
---// For Cross Client syncing
+--// Cross Client syncing
 local ServerRandom: Random = Random.new(
 	math.floor((workspace:GetServerTimeNow()-workspace.DistributedGameTime))
 )
@@ -149,13 +157,47 @@ local function Dispersion(X: number, Y: number): number
 end
 
 
+--// Remove parts that do not create a shadow
+local function CheckObfuscated(t: {BasePart}): {BasePart}
+	for i,part : BasePart in t do
+		if not part.CastShadow then
+			table.remove(t,i)
+		end
+		if part.Transparency >= 0.5 then
+			table.remove(t,i)
+		end
+	end
+
+	return t
+end
+
+--// Return if point is in light
+local OVP = OverlapParams.new()
+OVP.FilterType = Enum.RaycastFilterType.Blacklist
+
+local function InSunlight(Point: Vector3): bool
+	if Lighting.GlobalShadows then return false end
+
+	local sunlightDir = Lighting:GetSunDirection()
+	local sp = Point + sunlightDir * 500
+	local scf = CFrame.lookAt(sp,sp + sunlightDir)
+	local ssize = Vector3.new(1,1,1000)
+
+	local Det = workspace:GetPartBoundsInBox(CFrame.new(Point),Vector3.one/10)[1]
+	OVP.FilterDescendantsInstances = {Det}
+
+	local Sunlight = CheckObfuscated(workspace:GetPartBoundsInBox(scf,ssize,OVP))
+	return Sunlight ~= {}
+end
+
+
 --// Inits the spectrum for time period t
 local function InitSpectrum(t: number, Index: number): Vector2
 	local OmegaT: number = Dispersions[Index] * t
 
 	local cos: number = math.cos(OmegaT)
 	local sin: number = math.sin(OmegaT)
-
+	
 	local ca = cos*(Spectrum[Index].X + SpectrumConj[Index].X) - sin*(Spectrum[Index].Y - SpectrumConj[Index].Y)
 	local cb = cos*(Spectrum[Index].Y - SpectrumConj[Index].Y) + sin*(Spectrum[Index].X + SpectrumConj[Index].X)
 
@@ -179,7 +221,7 @@ end
 --// Calculates the FFT and moves the vertices accordingly
 local function UpdateOcean(t: number)
 	task.desynchronize()
-	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
+	local BlendPixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 
 	local kx, kz, len, Lambda = 0, 0, 0, -1
 
@@ -220,7 +262,7 @@ local function UpdateOcean(t: number)
 	task.synchronize()
 
 	--// Transform the Vertices
-	local SunDirection: Vector3 = game.Lighting:GetSunDirection()
+	local SunDirection: Vector3 = LightingService:GetSunDirection()
 	local CausticBrightness: number = 1 + CAUSTICS.Position.Y / OCEAN.Position.Y / 5 -- Less light in deeper water
 
 	for Index, Displacement: {number} in DisplacementFFT do
@@ -229,6 +271,7 @@ local function UpdateOcean(t: number)
 
 		-- Fixes Imag numbers being flipped
 		local Sign: number = (X + Y) % 2 * 2 - 1
+		
 
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
@@ -237,6 +280,7 @@ local function UpdateOcean(t: number)
 			Y + Displacement[2] * Lambda * Sign
 			)
 		)
+		
 
 		--// Sea foam
 		OCEAN_MESH:SetVertexColor(Index, Color3.fromHSV(
@@ -245,6 +289,7 @@ local function UpdateOcean(t: number)
 			0.7
 			)
 		)
+
 		
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		local Normal: Vector3 = Vector3.new(
@@ -255,39 +300,53 @@ local function UpdateOcean(t: number)
 
 		OCEAN_MESH:SetVertexNormal(Index, Normal)
 
-		--// Caustics
-		local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness -- at some point this can be replaced with a raycast pointing upwards
 
-		table.insert(Pixels, 0.4 + SunDot)
-		table.insert(Pixels, 0.3 + SunDot)
-		table.insert(Pixels, 0.15 + SunDot)
-		table.insert(Pixels, 1)
+		--// Water Caustics
+
+		-- Account for shadows
+		if InSunlight(Vector3.new(X, 0, Y)) / OCEAN.Size then
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4])
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1])
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 2)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 3)
+		else
+			local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness -- at some point this can be replaced with a local raycast pointing upwards
+
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]     + SunDot)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1] + SunDot)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 2] + SunDot)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 3] + SunDot)
+		end
+
 	end
-
-	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
+	
+	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, BlendPixels)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
-	CAUSTICS_TEXTURE = Instance.new("EditableImage")
+	CAUSTICS_TEXTURE = AssetService:CreateEditableImageAsync(FLOOR_TEXTURE.ColorId)
 
 	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
+
+	FLOOR_COLOR = CAUSTICS_TEXTURE:ReadPixels(Vector2.zero, TEXTURE_SIZE)
 
 	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, 32, FOURIER_SIZE*OCEAN.Size.Z)
 	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
-	for X = 0, FOURIER_SIZE do
-		for Y = 0, FOURIER_SIZE do
-			OCEAN_MESH:AddVertex(Vector3.new(X,0,Y))
+	for X = 0, FOURIER_SIZE-1 do
+		for Y = 0, FOURIER_SIZE-1 do
+			local Vertex = OCEAN_MESH:AddVertex(Vector3.new(X,0,Y))
+			OCEAN_MESH:SetUV(Vertex, Vector2.new(X,Y)/FOURIER_SIZE)
 		end
 	end
 
 	--// Connects the Vertices into Triangles
 	for X = 1, FOURIER_SIZE-2 do
-		for Y = 0, FOURIER_SIZE-2 do
+		for Y = 1, FOURIER_SIZE-2 do
 			local Vertex1 = X * FOURIER_SIZE + Y
 			local Vertex2 = Vertex1 + 1
 			local Vertex3 = (X + 1) * FOURIER_SIZE + Y
