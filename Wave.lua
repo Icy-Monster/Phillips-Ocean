@@ -5,7 +5,7 @@
 -- @IcyMonstrosity, 2023
 -- https://devforum.roblox.com/t/fft-phillips-ocean/2950964
 
-̉
+
 
 ---------------------------------------
 ---------------CONSTANTS---------------
@@ -117,7 +117,7 @@ local function PhillipsSpectrum(X: number, Y: number): number
 
 	local KLength = K.Magnitude
 	if KLength < 0.000001 then
-		return 0 
+		return 0
 	end
 
 	local KLength2: number = KLength * KLength
@@ -175,12 +175,11 @@ end
 local OVP = OverlapParams.new()
 OVP.FilterType = Enum.RaycastFilterType.Blacklist
 
-local function InSunlight(Point: Vector3): bool
+local function InSunlight(Point: Vector3, SunDirection: Vector3): bool
 	if Lighting.GlobalShadows then return false end
 
-	local sunlightDir = Lighting:GetSunDirection()
-	local sp = Point + sunlightDir * 500
-	local scf = CFrame.lookAt(sp,sp + sunlightDir)
+	local sp = Point + SunDirection * 500
+	local scf = CFrame.lookAt(sp,sp + SunDirection)
 	local ssize = Vector3.new(1,1,1000)
 
 	local Det = workspace:GetPartBoundsInBox(CFrame.new(Point),Vector3.one/10)[1]
@@ -197,7 +196,7 @@ local function InitSpectrum(t: number, Index: number): Vector2
 
 	local cos: number = math.cos(OmegaT)
 	local sin: number = math.sin(OmegaT)
-	
+
 	local ca = cos*(Spectrum[Index].X + SpectrumConj[Index].X) - sin*(Spectrum[Index].Y - SpectrumConj[Index].Y)
 	local cb = cos*(Spectrum[Index].Y - SpectrumConj[Index].Y) + sin*(Spectrum[Index].X + SpectrumConj[Index].X)
 
@@ -304,7 +303,7 @@ local function UpdateOcean(t: number)
 		--// Water Caustics
 
 		-- Account for shadows
-		if InSunlight(Vector3.new(X, 0, Y)) / OCEAN.Size then
+		if InSunlight(Vector3.new(X, 0, Y) / OCEAN.Size SunDirection) then
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4])
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1])
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 2)
