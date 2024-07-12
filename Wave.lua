@@ -306,15 +306,15 @@ local function UpdateOcean(t: number)
 		if InSunlight(Vector3.new(X, 0, Y) / OCEAN.Size SunDirection) then
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4])
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1])
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 2)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 3)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 2])
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 3])
 		else
 			local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness -- at some point this can be replaced with a local raycast pointing upwards
 
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]     + SunDot)
 			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1] + SunDot)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 2] + SunDot)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]+ 3] + SunDot)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 2] + SunDot)
+			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 3])
 		end
 
 	end
