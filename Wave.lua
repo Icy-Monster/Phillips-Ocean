@@ -50,7 +50,7 @@ local CAUSTICS_TEXTURE: EditableImage
 local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 --// Blend the caustics with this texture
-local FLOOR_TEXTURE: SurfaceAppearance = game.workspace.wataw --change this later
+local FLOOR_TEXTURE: string = "rbxassetid://18503327352"
 
 --// The Floor Texture's color, used for blending
 local FLOOR_COLOR: {number} = {}
@@ -77,7 +77,7 @@ local LuaFFT = require(script.LuaFFT)
 
 --// Services
 local RunService: RunService = game:GetService("RunService")
-local LightingService: LightingService = game:GetService("LightingService")
+local LightingService: Lighting = game:GetService("Lighting")
 local AssetService: AssetService = game:GetService("AssetService")
 
 --// Cross Client syncing
@@ -157,39 +157,6 @@ local function Dispersion(X: number, Y: number): number
 end
 
 
---// Remove parts that do not create a shadow
-local function CheckObfuscated(t: {BasePart}): {BasePart}
-	for i,part : BasePart in t do
-		if not part.CastShadow then
-			table.remove(t,i)
-		end
-		if part.Transparency >= 0.5 then
-			table.remove(t,i)
-		end
-	end
-
-	return t
-end
-
---// Return if point is in light
-local OVP = OverlapParams.new()
-OVP.FilterType = Enum.RaycastFilterType.Blacklist
-
-local function InSunlight(Point: Vector3, SunDirection: Vector3): bool
-	if Lighting.GlobalShadows then return false end
-
-	local sp = Point + SunDirection * 500
-	local scf = CFrame.lookAt(sp,sp + SunDirection)
-	local ssize = Vector3.new(1,1,1000)
-
-	local Det = workspace:GetPartBoundsInBox(CFrame.new(Point),Vector3.one/10)[1]
-	OVP.FilterDescendantsInstances = {Det}
-
-	local Sunlight = CheckObfuscated(workspace:GetPartBoundsInBox(scf,ssize,OVP))
-	return Sunlight ~= {}
-end
-
-
 --// Inits the spectrum for time period t
 local function InitSpectrum(t: number, Index: number): Vector2
 	local OmegaT: number = Dispersions[Index] * t
@@ -220,7 +187,7 @@ end
 --// Calculates the FFT and moves the vertices accordingly
 local function UpdateOcean(t: number)
 	task.desynchronize()
-	local BlendPixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
+	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 
 	local kx, kz, len, Lambda = 0, 0, 0, -1
 
@@ -262,7 +229,6 @@ local function UpdateOcean(t: number)
 
 	--// Transform the Vertices
 	local SunDirection: Vector3 = LightingService:GetSunDirection()
-	local CausticBrightness: number = 1 + CAUSTICS.Position.Y / OCEAN.Position.Y / 5 -- Less light in deeper water
 
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FOURIER_SIZE
@@ -270,7 +236,7 @@ local function UpdateOcean(t: number)
 
 		-- Fixes Imag numbers being flipped
 		local Sign: number = (X + Y) % 2 * 2 - 1
-		
+
 
 		--// Displace the Position
 		OCEAN_MESH:SetPosition(Index, Vector3.new(
@@ -279,7 +245,7 @@ local function UpdateOcean(t: number)
 			Y + Displacement[2] * Lambda * Sign
 			)
 		)
-		
+
 
 		--// Sea foam
 		OCEAN_MESH:SetVertexColor(Index, Color3.fromHSV(
@@ -289,7 +255,7 @@ local function UpdateOcean(t: number)
 			)
 		)
 
-		
+
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		local Normal: Vector3 = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
@@ -301,38 +267,27 @@ local function UpdateOcean(t: number)
 
 
 		--// Water Caustics
+		local SunDot: number = Normal:Dot(SunDirection) - 1
 
-		-- Account for shadows
-		if InSunlight(Vector3.new(X, 0, Y) / OCEAN.Size SunDirection) then
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4])
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1])
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 2])
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 3])
-		else
-			local SunDot: number = Normal:Dot(SunDirection) / 2 * CausticBrightness -- at some point this can be replaced with a local raycast pointing upwards
-
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4]     + SunDot)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 1] + SunDot)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 2] + SunDot)
-			table.insert(BlendPixels, FLOOR_COLOR[INDEX*4 + 3])
-		end
-
+		table.insert(Pixels, FLOOR_COLOR[Index*4 - 3] + SunDot)
+		table.insert(Pixels, FLOOR_COLOR[Index*4 - 2] + SunDot)
+		table.insert(Pixels, FLOOR_COLOR[Index*4 - 1] + SunDot)
+		table.insert(Pixels, FLOOR_COLOR[Index*4])
 	end
-	
-	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, BlendPixels)
+
+	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
 	OCEAN_MESH = Instance.new("EditableMesh")
-	CAUSTICS_TEXTURE = AssetService:CreateEditableImageAsync(FLOOR_TEXTURE.ColorId)
+	CAUSTICS_TEXTURE = AssetService:CreateEditableImageAsync(FLOOR_TEXTURE)
 
 	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
-
 	FLOOR_COLOR = CAUSTICS_TEXTURE:ReadPixels(Vector2.zero, TEXTURE_SIZE)
 
-	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, 32, FOURIER_SIZE*OCEAN.Size.Z)
+	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z)
 	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
@@ -357,7 +312,7 @@ local function MakeMesh()
 	end
 
 	OCEAN_MESH.Parent = OCEAN
-	CAUSTICS_TEXTURE.Parent = CAUSTICS
+	CAUSTICS_TEXTURE.Parent = CAUSTICS:WaitForChild("SurfaceAppearance")
 end
 
 ---------------FUNCTIONS---------------
