@@ -9,6 +9,7 @@ And lastly I wanted to mention 2 things:
 
 # Showcase
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/2/2/8/6/228640c16cdf4eca6bd2caa52f49911028166d98.png)
+
 You can see both the caustics and water here, caustics are almost physically accurate, so they are dependant on the water..
 
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/a/d/b/f/adbf084825349b716a7173d203de48288d53d0f7.mp4)
@@ -16,12 +17,15 @@ You can see both the caustics and water here, caustics are almost physically acc
 Here's a newer version that includes texture blending
 ****
 ![](https://github.com/user-attachments/assets/feaa12be-1290-4a3a-ad82-0a25f33e87a9)
+
 The caustics are fully linked to the sun, so if the sun is down there will be less light to bounce through the water.
 ****
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/2/6/a/f/26afd0cfdb924924a80057179a74bfe07a1ae169_2_690x339.png)
+
 You can fully see the caustics here, which are all derived from the sun and normal of the water. Specifically they use Snell's law in reverse, so they are very close to being physically accurate while being performant.
 ****
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/9/4/d/4/94d46f4e6e3ceb3457cb7d8da22fd021cff66f05_2_690x339.png)
+
 I went for a sort of stylized effect here by multiplying the normals by 10.
 ****
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/d/6/7/f/d67f1bbb445e65768422721243607a5420639076_2_690x339.png)
@@ -29,6 +33,7 @@ I went for a sort of stylized effect here by multiplying the normals by 10.
 ****
 ![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/c/5/0/a/c50af8cc4f60e562c4ca4fc278b24ee053ac7b86.mp4)
 ![]([upload://bQKkdGyEcLiZIuUh4oMoCLqegiW.mp4](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/5/3/0/e/530e53c9c8e3a00de5c84dea00e5d2186524dba6.mp4))
+
 This was still a work in progress, where I forgot to invert the foam values.
 ****
 *Most of the images are outdated from one another, the most up to date images are the 2 images at night with foam and the one that blends the caustics with a texture.*
