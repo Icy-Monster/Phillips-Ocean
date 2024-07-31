@@ -1,4 +1,4 @@
-# Summary
+![image](https://github.com/user-attachments/assets/4b4eb5f1-3bc1-46fa-91a6-c330f97bfca7)# Summary
 This is an implementation of an Ocean-Spectra, the Philips spectrum, to be exact. It uses Fast Fourier transforms (FFT) to efficiently and quickly generate waves. It uses the [EditableMesh](https://create.roblox.com/docs/reference/engine/classes/EditableMesh) instance to its fullest, vertex’s positions and even normals are changed each frame! The project offers wide customizations to artists, to get any type of sea environment that one may need— and it’s even fully open sourced, so anyone can take a look inside and see how it is made. And to top it all of it also includes water caustics using an [EditableImage](https://create.roblox.com/docs/reference/engine/classes/EditableImage) by using Snell's law in reverse to create almost physically accurate but still fast caustics. 
 
 This project took quite a long time to create and finish, starting all the way in September 2023 and ending in April 2024, but do be aware that there were long breaks in between. There is also a good chance that I continue development on this to implement features such as foam (this has been added!), I've already looked around and encountered 2 ways of implementing it: using a Jacobian Matrix, which is what is being used in Sea of Thieves (which was a big inspiration for this project), or the naive method that was used by NVIDIA in GPU Gems 2: Chapter 18 where they simply looked at the height of the water to determine the choppiness. Both implementations have their pros and cons but that will ultimately come down to the one that fits this project best.
@@ -8,28 +8,30 @@ And lastly I wanted to mention 2 things:
 2. The default settings of this project are meant to stress test it, so I greatly recommend you change the Fourier size to 64.
 
 # Showcase
-![228640c16cdf4eca6bd2caa52f49911028166d98_2_690x339](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/27199bf5-868a-4d6b-ba04-6c15401b6b5e)
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/2/2/8/6/228640c16cdf4eca6bd2caa52f49911028166d98.png)
 You can see both the caustics and water here, caustics are almost physically accurate, so they are dependant on the water..
+
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/a/d/b/f/adbf084825349b716a7173d203de48288d53d0f7.mp4)
+
+Here's a newer version that includes texture blending
 ****
-![039da1acf6506eec51a069c9e88498d499a82623_2_690x339](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/8cb595d3-ca32-4511-b47c-1c599e47fab1)
+![](https://github.com/user-attachments/assets/feaa12be-1290-4a3a-ad82-0a25f33e87a9)
 The caustics are fully linked to the sun, so if the sun is down there will be less light to bounce through the water.
 ****
-![26afd0cfdb924924a80057179a74bfe07a1ae169_2_690x339](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/edc567a7-8488-4d58-8498-2c5cd3e2ebe0)
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/2/6/a/f/26afd0cfdb924924a80057179a74bfe07a1ae169_2_690x339.png)
 You can fully see the caustics here, which are all derived from the sun and normal of the water. Specifically they use Snell's law in reverse, so they are very close to being physically accurate while being performant.
 ****
-![94d46f4e6e3ceb3457cb7d8da22fd021cff66f05_2_690x339](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/f1fcc940-be68-4c64-8ee5-adbdc13f0d96)
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/9/4/d/4/94d46f4e6e3ceb3457cb7d8da22fd021cff66f05_2_690x339.png)
 I went for a sort of stylized effect here by multiplying the normals by 10.
 ****
-![d67f1bbb445e65768422721243607a5420639076](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/ceeb1933-6e0d-42a2-8dd6-4a0cb5806c40)
-![688d6bd585dd4fba1b25eee1e8e2b7aa532aaf7c](https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/770526e8-8dfa-4a3a-a78c-d334332a72ae)
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/d/6/7/f/d67f1bbb445e65768422721243607a5420639076_2_690x339.png)
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/optimized/5X/6/8/8/d/688d6bd585dd4fba1b25eee1e8e2b7aa532aaf7c_2_690x339.png)
 ****
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/fc2801c1-603d-4b1e-8c86-ad42940e04f2
-
-
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/51b06164-f509-49dc-8f48-3c2dcf00ebcf
-
-
-https://github.com/Icy-Monster/Phillips-Ocean/assets/102822122/21c579f3-398b-4f99-b38e-4233611f8f25
+![](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/c/5/0/a/c50af8cc4f60e562c4ca4fc278b24ee053ac7b86.mp4)
+![]([upload://bQKkdGyEcLiZIuUh4oMoCLqegiW.mp4](https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/5X/5/3/0/e/530e53c9c8e3a00de5c84dea00e5d2186524dba6.mp4))
+This was still a work in progress, where I forgot to invert the foam values.
+****
+*Most of the images are outdated from one another, the most up to date images are the 2 images at night with foam and the one that blends the caustics with a texture.*
 
 # Want to try it yourself?
 Well, fear not, this project is fully open source and available to everyone- do note that **EditableMeshes and EditableImages are still not available on live Roblox servers**, so you will need to open it in Studio to experience it for yourself. You can find the place [here](https://www.roblox.com/games/15133748815/FFT-Ocean).
