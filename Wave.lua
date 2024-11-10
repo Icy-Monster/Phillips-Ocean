@@ -300,7 +300,6 @@ local function MakeMesh()
 	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, CAUSTICS.Position.Y, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
-local i = 1
 	for X = 0, FOURIER_SIZE-1 do
 		for Y = 0, FOURIER_SIZE-1 do
 			OCEAN_MESH:AddVertex(Vector3.new(X,math.random(0,1),Y)) --bug where if Y is always 0 it won't work??? ask Roblox not me
