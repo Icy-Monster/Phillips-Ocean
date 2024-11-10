@@ -31,7 +31,7 @@ local WIND_SPEED: Vector2 = Vector2.new(32, 25)
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
 
 --// The ocean, stuff such as the EditableMesh/Image are stored within
-local OCEAN: MeshPart = workspace:WaitForChild("Ocean")
+local OCEAN: MeshPart = workspace:WaitForChild("Ocean"):WaitForChild("Ocean")
 
 --// The editable mesh, used to creates waves, and to hold the foam
 local OCEAN_MESH: EditableMesh
@@ -41,7 +41,7 @@ local OCEAN_MESH: EditableMesh
 
 
 --// The caustics mesh part
-local CAUSTICS: MeshPart = workspace:WaitForChild("Caustics")
+local CAUSTICS: MeshPart = workspace:WaitForChild("Ocean"):WaitForChild("Floor")
 
 --// For caustics
 local CAUSTICS_TEXTURE: EditableImage
@@ -50,10 +50,12 @@ local CAUSTICS_TEXTURE: EditableImage
 local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 --// Blend the caustics with this texture
-local FLOOR_TEXTURE: string = "rbxassetid://18503327352"
+local FLOOR_TEXTURE: string ="rbxassetid://118280910324790"
+-- "rbxassetid://18503327352" had to manually resize it because Roblox can't publish functioning updates
+-- Roblox decided that without Plugin Security we can't read a SurfaceAppearance's ColorMap ID
 
 --// The Floor Texture's color, used for blending
-local FLOOR_COLOR: {number} = {}
+local FLOOR_BUFFER: buffer
 
 ---------------CONSTANTS---------------
 ---------------------------------------
@@ -187,7 +189,7 @@ end
 --// Calculates the FFT and moves the vertices accordingly
 local function UpdateOcean(t: number)
 	task.desynchronize()
-	local Pixels = table.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
+	local Pixels = buffer.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 
 	local kx, kz, len, Lambda = 0, 0, 0, -1
 
@@ -238,8 +240,8 @@ local function UpdateOcean(t: number)
 		local Sign: number = (X + Y) % 2 * 2 - 1
 
 
-		--// Displace the Position
-		OCEAN_MESH:SetPosition(Index, Vector3.new(
+		--// Displace the Position Vertices[Index]
+		OCEAN_MESH:SetPosition(4294967296 + Index, Vector3.new(
 			X + Displacement[1] * Lambda * Sign,
 			HeightFFT[Index][1] * Sign,
 			Y + Displacement[2] * Lambda * Sign
@@ -248,7 +250,7 @@ local function UpdateOcean(t: number)
 
 
 		--// Sea foam
-		OCEAN_MESH:SetVertexColor(Index, Color3.fromHSV(
+		OCEAN_MESH:SetColor(12884901888 + Index, Color3.fromHSV(
 			0.55,
 			math.min(-HeightFFT[Index][1] * Sign / 3 + 0.3, 1),
 			0.7
@@ -263,38 +265,47 @@ local function UpdateOcean(t: number)
 			-NormalFFT[Index][2] * Sign
 		).Unit
 
-		OCEAN_MESH:SetVertexNormal(Index, Normal)
+		OCEAN_MESH:SetNormal(8589934592 + Index, Normal)
 
 
 		--// Water Caustics
-		local SunDot: number = Normal:Dot(SunDirection) - 1
+		local SunDot: number = Normal:Dot(SunDirection) * 25 --intensity
 
-		table.insert(Pixels, FLOOR_COLOR[Index*4 - 3] + SunDot)
-		table.insert(Pixels, FLOOR_COLOR[Index*4 - 2] + SunDot)
-		table.insert(Pixels, FLOOR_COLOR[Index*4 - 1] + SunDot)
-		table.insert(Pixels, FLOOR_COLOR[Index*4])
+		buffer.writeu8(Pixels, Index*4 - 4, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 4))
+		buffer.writeu8(Pixels, Index*4 - 3, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 3))
+		buffer.writeu8(Pixels, Index*4 - 2, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 2))
+		buffer.writeu8(Pixels, Index*4 - 1, 255)
 	end
-
-	CAUSTICS_TEXTURE:WritePixels(Vector2.zero, TEXTURE_SIZE, Pixels)
+	
+	CAUSTICS_TEXTURE:WritePixelsBuffer(Vector2.zero, TEXTURE_SIZE, Pixels)
+	CAUSTICS.TextureContent = Content.fromObject(CAUSTICS_TEXTURE)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
-	OCEAN_MESH = Instance.new("EditableMesh")
-	CAUSTICS_TEXTURE = AssetService:CreateEditableImageAsync(FLOOR_TEXTURE)
+	OCEAN_MESH = AssetService:CreateEditableMesh()
 
-	CAUSTICS_TEXTURE:Resize(TEXTURE_SIZE)
-	FLOOR_COLOR = CAUSTICS_TEXTURE:ReadPixels(Vector2.zero, TEXTURE_SIZE)
+	local FloorColor = AssetService:CreateEditableImageAsync(Content.fromUri(FLOOR_TEXTURE),{
+		Size = TEXTURE_SIZE
+	})
 
-	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z)
-	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, -15, FOURIER_SIZE/2 * OCEAN.Size.Z)
+	FLOOR_BUFFER = FloorColor:ReadPixelsBuffer(Vector2.zero, TEXTURE_SIZE)
+
+	CAUSTICS_TEXTURE = AssetService:CreateEditableImage({
+		Size = TEXTURE_SIZE
+	})
+
+	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z) / 4
+	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, CAUSTICS.Position.Y, FOURIER_SIZE/2 * OCEAN.Size.Z)
 
 	--// Creates the Vertices
+local i = 1
 	for X = 0, FOURIER_SIZE-1 do
 		for Y = 0, FOURIER_SIZE-1 do
-			local Vertex = OCEAN_MESH:AddVertex(Vector3.new(X,0,Y))
-			OCEAN_MESH:SetUV(Vertex, Vector2.new(X,Y)/FOURIER_SIZE)
+			OCEAN_MESH:AddVertex(Vector3.new(X,math.random(0,1),Y)) --bug where if Y is always 0 it won't work??? ask Roblox not me
+			OCEAN_MESH:AddColor(Color3.fromRGB(0,0,0), 1)
+			OCEAN_MESH:AddNormal(Vector3.zero)
 		end
 	end
 
@@ -306,13 +317,19 @@ local function MakeMesh()
 			local Vertex3 = (X + 1) * FOURIER_SIZE + Y
 			local Vertex4 = Vertex3 + 1
 
-			OCEAN_MESH:AddTriangle(Vertex1, Vertex2, Vertex3)
-			OCEAN_MESH:AddTriangle(Vertex2, Vertex4, Vertex3)
+			
+			local Face = OCEAN_MESH:AddTriangle(4294967296+Vertex1, 4294967296+Vertex2, 4294967296+Vertex3)
+			OCEAN_MESH:SetFaceColors(Face, {12884901888+Vertex1, 12884901888+Vertex2, 12884901888+Vertex3})
+			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex1, 8589934592+Vertex2, 8589934592+Vertex3})		
+
+			local Face = OCEAN_MESH:AddTriangle(4294967296+Vertex2, 4294967296+Vertex4, 4294967296+Vertex3)
+			OCEAN_MESH:SetFaceColors(Face, {12884901888+Vertex2, 12884901888+Vertex4, 12884901888+Vertex3})
+			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex2, 8589934592+Vertex4, 8589934592+Vertex3})		
 		end
 	end
 
-	OCEAN_MESH.Parent = OCEAN
-	CAUSTICS_TEXTURE.Parent = CAUSTICS:WaitForChild("SurfaceAppearance")
+	local Mesh = AssetService:CreateMeshPartAsync(Content.fromObject(OCEAN_MESH))
+	OCEAN:ApplyMesh(Mesh)
 end
 
 ---------------FUNCTIONS---------------
