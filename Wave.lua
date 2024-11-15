@@ -31,7 +31,7 @@ local WIND_SPEED: Vector2 = Vector2.new(32, 25)
 local WIND_DIRECTION: Vector2 = WIND_SPEED.Unit
 
 --// The ocean, stuff such as the EditableMesh/Image are stored within
-local OCEAN: MeshPart = workspace:WaitForChild("Ocean"):WaitForChild("Ocean")
+local OCEAN: MeshPart = workspace:WaitForChild("Ocean", math.huge):WaitForChild("Ocean", math.huge)
 
 --// The editable mesh, used to creates waves, and to hold the foam
 local OCEAN_MESH: EditableMesh
@@ -41,7 +41,7 @@ local OCEAN_MESH: EditableMesh
 
 
 --// The caustics mesh part
-local CAUSTICS: MeshPart = workspace:WaitForChild("Ocean"):WaitForChild("Floor")
+local CAUSTICS: MeshPart = workspace:WaitForChild("Ocean", math.huge):WaitForChild("Floor", math.huge)
 
 --// For caustics
 local CAUSTICS_TEXTURE: EditableImage
