@@ -269,7 +269,7 @@ local function UpdateOcean(t: number)
 
 
 		--// Water Caustics
-		local SunDot: number = Normal:Dot(SunDirection) * 25 --intensity
+		local SunDot: number = Normal:Dot(SunDirection) * 40 --intensity
 
 		buffer.writeu8(Pixels, Index*4 - 4, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 4))
 		buffer.writeu8(Pixels, Index*4 - 3, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 3))
@@ -278,7 +278,6 @@ local function UpdateOcean(t: number)
 	end
 	
 	CAUSTICS_TEXTURE:WritePixelsBuffer(Vector2.zero, TEXTURE_SIZE, Pixels)
-	CAUSTICS.TextureContent = Content.fromObject(CAUSTICS_TEXTURE)
 end
 
 
@@ -327,8 +326,10 @@ local function MakeMesh()
 		end
 	end
 
+	--// Link all the Editable instances to their counterpart
 	local Mesh = AssetService:CreateMeshPartAsync(Content.fromObject(OCEAN_MESH))
 	OCEAN:ApplyMesh(Mesh)
+	CAUSTICS.TextureContent = Content.fromObject(CAUSTICS_TEXTURE)
 end
 
 ---------------FUNCTIONS---------------
