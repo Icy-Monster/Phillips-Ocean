@@ -50,9 +50,9 @@ local CAUSTICS_TEXTURE: EditableImage
 local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 --// Blend the caustics with this texture
-local FLOOR_TEXTURE: string ="rbxassetid://118280910324790"
+local FLOOR_TEXTURE: string = "rbxassetid://118280910324790"
 -- "rbxassetid://18503327352" had to manually resize it because Roblox can't publish functioning updates
--- Roblox decided that without Plugin Security we can't read a SurfaceAppearance's ColorMap ID
+-- Roblox decided that without Plugin Security we can't read a SurfaceAppearance's ColorMap ID 
 
 --// The Floor Texture's color, used for blending
 local FLOOR_BUFFER: buffer
@@ -189,14 +189,13 @@ end
 --// Calculates the FFT and moves the vertices accordingly
 local function UpdateOcean(t: number)
 	task.desynchronize()
-	local Pixels = buffer.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 
+	local Pixels = buffer.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 	local kx, kz, len, Lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
 	for Y = 0, FOURIER_SIZE-1 do
 		kz = (2 * Y - FOURIER_SIZE) * k
-
 		for X = 0, FOURIER_SIZE-1 do
 			kx = (2 * X - FOURIER_SIZE) * k
 			len = math.sqrt(kx * kx + kz * kz)
@@ -218,7 +217,6 @@ local function UpdateOcean(t: number)
 					c.X * -(kz/len)
 				}
 			end
-
 		end
 	end
 
@@ -230,7 +228,7 @@ local function UpdateOcean(t: number)
 	task.synchronize()
 
 	--// Transform the Vertices
-	local SunDirection: Vector3 = LightingService:GetSunDirection()
+	local SunDirection: Vector3 = Vector3.new(0, 0.917, -0.398) --LightingService:GetSunDirection()
 
 	for Index, Displacement: {number} in DisplacementFFT do
 		local X: number = Index // FOURIER_SIZE
@@ -261,7 +259,7 @@ local function UpdateOcean(t: number)
 		--// Change the Normal, you can change the Y value to increase/decrease strength
 		local Normal: Vector3 = Vector3.new(
 			-NormalFFT[Index][1] * Sign,
-			1,
+			2,
 			-NormalFFT[Index][2] * Sign
 		).Unit
 
@@ -276,14 +274,14 @@ local function UpdateOcean(t: number)
 		buffer.writeu8(Pixels, Index*4 - 2, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 2))
 		buffer.writeu8(Pixels, Index*4 - 1, 255)
 	end
-	
+
 	CAUSTICS_TEXTURE:WritePixelsBuffer(Vector2.zero, TEXTURE_SIZE, Pixels)
 end
 
 
 --//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
-	OCEAN_MESH = AssetService:CreateEditableMesh()
+	OCEAN_MESH = AssetService:CreateEditableMesh({FixedSize=true})
 
 	local FloorColor = AssetService:CreateEditableImageAsync(Content.fromUri(FLOOR_TEXTURE),{
 		Size = TEXTURE_SIZE
@@ -295,8 +293,8 @@ local function MakeMesh()
 		Size = TEXTURE_SIZE
 	})
 
-	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z) / 4
-	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/2 * OCEAN.Size.X, CAUSTICS.Position.Y, FOURIER_SIZE/2 * OCEAN.Size.Z)
+	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X/OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z/OCEAN.Size.Z)
+	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/(2*OCEAN.Size.X) * OCEAN.Size.X, CAUSTICS.Position.Y, FOURIER_SIZE/(2*OCEAN.Size.Z) * OCEAN.Size.Z)
 
 	--// Creates the Vertices
 	for X = 0, FOURIER_SIZE-1 do
@@ -310,12 +308,12 @@ local function MakeMesh()
 	--// Connects the Vertices into Triangles
 	for X = 1, FOURIER_SIZE-2 do
 		for Y = 1, FOURIER_SIZE-2 do
-			local Vertex1 = X * FOURIER_SIZE + Y
+			local Vertex1 = (Y - 1) * FOURIER_SIZE + X
 			local Vertex2 = Vertex1 + 1
-			local Vertex3 = (X + 1) * FOURIER_SIZE + Y
+			local Vertex3 = Vertex1 + FOURIER_SIZE
 			local Vertex4 = Vertex3 + 1
 
-			
+
 			local Face = OCEAN_MESH:AddTriangle(4294967296+Vertex1, 4294967296+Vertex2, 4294967296+Vertex3)
 			OCEAN_MESH:SetFaceColors(Face, {12884901888+Vertex1, 12884901888+Vertex2, 12884901888+Vertex3})
 			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex1, 8589934592+Vertex2, 8589934592+Vertex3})		
@@ -326,9 +324,7 @@ local function MakeMesh()
 		end
 	end
 
-	--// Link all the Editable instances to their counterpart
-	local Mesh = AssetService:CreateMeshPartAsync(Content.fromObject(OCEAN_MESH))
-	OCEAN:ApplyMesh(Mesh)
+	OCEAN:ApplyMesh(AssetService:CreateMeshPartAsync(Content.fromObject(OCEAN_MESH)))
 	CAUSTICS.TextureContent = Content.fromObject(CAUSTICS_TEXTURE)
 end
 
@@ -342,10 +338,12 @@ MakeMesh()
 --// Initialize the ocean
 Init()
 
---// Update the ocean each frame
+--// Update the ocean 2nd frame
+local i = true
 RunService.RenderStepped:Connect(function()
+	i = not i
+	if i then return end
 	UpdateOcean(workspace:GetServerTimeNow())
 end)
-
 -----------------RUN-------------------
 ---------------------------------------
