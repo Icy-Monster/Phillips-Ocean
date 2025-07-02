@@ -51,7 +51,6 @@ local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 --// Blend the caustics with this texture
 local FLOOR_TEXTURE: string = CAUSTICS.TextureID
--- had to manually resize it because Roblox can't publish functioning updates
 
 --// The Floor Texture's color, used for blending
 local FLOOR_BUFFER: buffer
