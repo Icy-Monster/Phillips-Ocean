@@ -50,9 +50,8 @@ local CAUSTICS_TEXTURE: EditableImage
 local TEXTURE_SIZE: Vector2 = Vector2.new(FOURIER_SIZE, FOURIER_SIZE)
 
 --// Blend the caustics with this texture
-local FLOOR_TEXTURE: string = "rbxassetid://118280910324790"
--- "rbxassetid://18503327352" had to manually resize it because Roblox can't publish functioning updates
--- Roblox decided that without Plugin Security we can't read a SurfaceAppearance's ColorMap ID 
+local FLOOR_TEXTURE: string = CAUSTICS.TextureID
+-- had to manually resize it because Roblox can't publish functioning updates
 
 --// The Floor Texture's color, used for blending
 local FLOOR_BUFFER: buffer
@@ -185,12 +184,12 @@ local function Init()
 	end
 end
 
-
 --// Calculates the FFT and moves the vertices accordingly
+local Pixels = buffer.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
+
 local function UpdateOcean(t: number)
 	task.desynchronize()
 
-	local Pixels = buffer.create(TEXTURE_SIZE.X*TEXTURE_SIZE.Y*4)
 	local kx, kz, len, Lambda = 0, 0, 0, -1
 
 	--// Calculate Displacement/Height
@@ -236,9 +235,8 @@ local function UpdateOcean(t: number)
 
 		-- Fixes Imag numbers being flipped
 		local Sign: number = (X + Y) % 2 * 2 - 1
-
-
-		--// Displace the Position Vertices[Index]
+		
+		--// Displace the Position
 		OCEAN_MESH:SetPosition(4294967296 + Index, Vector3.new(
 			X + Displacement[1] * Lambda * Sign,
 			HeightFFT[Index][1] * Sign,
@@ -267,12 +265,11 @@ local function UpdateOcean(t: number)
 
 
 		--// Water Caustics
-		local SunDot: number = Normal:Dot(SunDirection) * 75 --intensity
+		local SunDot: number = Normal:Dot(SunDirection) * 75 --intensity, add math.max when not hard coded
 
 		buffer.writeu8(Pixels, Index*4 - 4, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 4))
 		buffer.writeu8(Pixels, Index*4 - 3, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 3))
 		buffer.writeu8(Pixels, Index*4 - 2, SunDot + buffer.readu8(FLOOR_BUFFER, Index*4 - 2))
-		buffer.writeu8(Pixels, Index*4 - 1, 255)
 	end
 
 	CAUSTICS_TEXTURE:WritePixelsBuffer(Vector2.zero, TEXTURE_SIZE, Pixels)
@@ -282,16 +279,21 @@ end
 --//Creates a Mesh with a X,Y resolution of Fourier Size
 local function MakeMesh()	
 	OCEAN_MESH = AssetService:CreateEditableMesh({FixedSize=true})
-
-	local FloorColor = AssetService:CreateEditableImageAsync(Content.fromUri(FLOOR_TEXTURE),{
-		Size = TEXTURE_SIZE
-	})
-
+	
+	local FloorColor = AssetService:CreateEditableImageAsync(Content.fromUri(FLOOR_TEXTURE))
+	FloorColor:DrawImageTransformed(
+		TEXTURE_SIZE/2,
+		(TEXTURE_SIZE / FloorColor.Size),
+		0,
+		FloorColor
+	)
 	FLOOR_BUFFER = FloorColor:ReadPixelsBuffer(Vector2.zero, TEXTURE_SIZE)
+	FloorColor:Destroy()
 
 	CAUSTICS_TEXTURE = AssetService:CreateEditableImage({
 		Size = TEXTURE_SIZE
 	})
+	
 
 	CAUSTICS.Size = Vector3.new(FOURIER_SIZE*OCEAN.Size.X/OCEAN.Size.X, CAUSTICS.Size.Y, FOURIER_SIZE*OCEAN.Size.Z/OCEAN.Size.Z)
 	CAUSTICS.Position = Vector3.new(FOURIER_SIZE/(2*OCEAN.Size.X) * OCEAN.Size.X, CAUSTICS.Position.Y, FOURIER_SIZE/(2*OCEAN.Size.Z) * OCEAN.Size.Z)
@@ -300,7 +302,7 @@ local function MakeMesh()
 	for X = 0, FOURIER_SIZE-1 do
 		for Y = 0, FOURIER_SIZE-1 do
 			OCEAN_MESH:AddVertex(Vector3.new(X,math.random(0,1),Y)) --bug where if Y is always 0 it won't work??? ask Roblox not me
-			OCEAN_MESH:AddColor(Color3.fromRGB(0,0,0), 1)
+			OCEAN_MESH:AddColor(Color3.new(0,0,0), 1)
 			OCEAN_MESH:AddNormal(Vector3.zero)
 		end
 	end
@@ -316,11 +318,11 @@ local function MakeMesh()
 
 			local Face = OCEAN_MESH:AddTriangle(4294967296+Vertex1, 4294967296+Vertex2, 4294967296+Vertex3)
 			OCEAN_MESH:SetFaceColors(Face, {12884901888+Vertex1, 12884901888+Vertex2, 12884901888+Vertex3})
-			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex1, 8589934592+Vertex2, 8589934592+Vertex3})		
+			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex1, 8589934592+Vertex2, 8589934592+Vertex3})
 
 			local Face = OCEAN_MESH:AddTriangle(4294967296+Vertex2, 4294967296+Vertex4, 4294967296+Vertex3)
 			OCEAN_MESH:SetFaceColors(Face, {12884901888+Vertex2, 12884901888+Vertex4, 12884901888+Vertex3})
-			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex2, 8589934592+Vertex4, 8589934592+Vertex3})		
+			OCEAN_MESH:SetFaceNormals(Face, {8589934592+Vertex2, 8589934592+Vertex4, 8589934592+Vertex3})
 		end
 	end
 
@@ -338,8 +340,8 @@ MakeMesh()
 --// Initialize the ocean
 Init()
 
---// Update the ocean 2nd frame
-local i = true
+--// Update the ocean
+local i=true
 RunService.RenderStepped:Connect(function()
 	i = not i
 	if i then return end
